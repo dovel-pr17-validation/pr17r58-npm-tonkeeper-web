@@ -1,0 +1,20 @@
+{
+    "name": "@tonkeeper/playwrite",
+    "version": "1.0.0",
+    "main": "index.js",
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "scripts": {
+        "playwright": "yarn playwright install",
+        "test": "npx playwright test",
+        "qa": "playwright test -c playwright.qa.config.ts",
+        "qa:setup": "playwright test -c playwright.qa.config.ts --project setup"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.62.1",
+        "@types/node": "^22.7.9",
+        "dotenv": "^16.4.5"
+    }
+}

@@ -1,0 +1,79 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# compiled output
+dist
+tmp
+/out-tsc
+*.tsbuildinfo
+
+# Licensed TT Firs Neue font binaries are served from fonts.keeperwallet.com.
+TT-Firs-Neue-*
+
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+
+# System Files
+.DS_Store
+Thumbs.db
+
+.turbo
+.yarn/cache
+.yarn/install-state.gz
+.history
+
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+**/public/locales/*
+**/src/wallet-translation/*
+
+
+package-lock.json
+
+# Local-only reference checkouts of the native apps; scanned when
+# multichain features need a behaviour reference. Never committed.
+CLAUDE_LOCAL.md
+
+# Ad-hoc screenshots / verification artifacts dropped at the repo root by
+# Playwright MCP and similar tools. Tracked PNG assets live in app/package
+# folders (apps/*/public, apps/mobile/fastlane/...) and are unaffected by
+# the root-only `/*.png`. Console logs and page snapshots land in
+# `.playwright-mcp/`.
+/*.png
+.playwright-mcp/
+
+# Playwright run artifacts. These belong under packages/uikit (already ignored
+# there); guard the repo root too so a stray run — or an accidental click on a
+# relative artifact path from a terminal at the repo root — is never committed.
+/test-results/
+/playwright-report/
+/blob-report/

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Keeper Pro</title>
+
+  </head>
+    <!--
+      The RPC origins below mirror chain-kit's static endpoint registry
+      (`cspConnectSrc()` in @tonkeeper/chainkit) — its built-in fallback
+      nodes. The live node manifest (GET multi.tonkeeper.com/api/v1/nodes,
+      see core's nodesManifestService) can hand out arbitrary node URLs at
+      runtime; a meta CSP is fixed for the page lifetime, so an origin the
+      manifest adds only starts working here after this list is updated.
+      chain-kit falls back down each chain's node list, so a blocked
+      origin degrades to the next node rather than failing the chain.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="
+    default-src 'none';
+    object-src 'none';
+    base-uri 'none';
+    form-action 'none';
+    frame-src 'none';
+    worker-src 'none';
+    media-src 'none';
+    script-src 'self' 'wasm-unsafe-eval';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    font-src 'self' data:;
+    connect-src 'self' https://tonkeeper.com https://*.tonkeeper.com https://tonapi.io https://*.tonapi.io https://tonconsole.com https://*.tonconsole.com https://api.trongrid.io/ https://oauth.telegram.org https://ethereum-rpc.publicnode.com https://cloudflare-eth.com https://eth.llamarpc.com https://1rpc.io https://arbitrum-one-rpc.publicnode.com https://arb1.arbitrum.io https://base-rpc.publicnode.com https://mainnet.base.org https://base.llamarpc.com https://bsc-rpc.publicnode.com https://bsc-dataseed.bnbchain.org https://binance.llamarpc.com https://btc1.trezor.io https://btc2.trezor.io https://btc3.trezor.io https://btc4.trezor.io https://btc5.trezor.io https://tron-rpc.publicnode.com;
+    manifest-src 'self';
+  ">
+
+  <body style="background:#10161F">
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <div id="react-portal-modal-container"></div>
+    <div id="react-portal-wrapper"></div>
+  </body>
+</html>

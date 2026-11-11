@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "lib": ["dom", "dom.iterable", "esnext"],
+        "allowJs": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "module": "esnext",
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": false,
+        "outDir": "dist",
+        "declaration": true,
+        // Same as uikit: stop `tsc -w` from rewriting the whole dist tree
+        // every time `yarn dev:web` starts after a fresh `build:pkg`.
+        "incremental": true,
+        "tsBuildInfoFile": "./tsconfig.tsbuildinfo"
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "**/stories"]
+}

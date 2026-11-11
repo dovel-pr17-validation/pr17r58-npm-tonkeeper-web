@@ -1,0 +1,59 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "globalEnv": ["WALLETCONNECT_PROJECT_ID", "MIGRATION_OLD_ORIGIN", "MIGRATION_NEW_ORIGIN"],
+    "tasks": {
+        "build": {
+            "dependsOn": ["^build"],
+            "outputs": [".next/**", "dist/**"]
+        },
+        "build:pkg": {
+            "cache": false,
+            "dependsOn": ["^build:pkg"],
+            "outputs": [".next/**", "dist/**"]
+        },
+        "build:ipad": {
+            "dependsOn": ["^build:pkg"],
+            "outputs": [".next/**", "dist/**"]
+        },
+        "build:twa": {
+            "dependsOn": ["^build:pkg"],
+            "outputs": [".next/**", "dist/**"]
+        },
+        "build:showcase": {
+            "dependsOn": ["^build:pkg"],
+            "outputs": ["dist/**"]
+        },
+        "build:web": {
+            "dependsOn": ["^build:pkg"],
+            "outputs": [".next/**", "dist/**"]
+        },
+        "build:migration": {
+            "dependsOn": ["^build:pkg"],
+            "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/locales/src/migration/**"],
+            "outputs": ["dist/**"]
+        },
+        "build:extension": {
+            "cache": false,
+            "dependsOn": ["^build:pkg"],
+            "outputs": [".next/**", "dist/**"]
+        },
+        "build:desktop": {
+            "cache": false,
+            "dependsOn": ["^build:pkg"],
+            "outputs": [".next/**", "dist/**"]
+        },
+        "dev": {
+            "cache": false
+        },
+        "typecheck": {
+            "dependsOn": ["^build:pkg"],
+            "outputs": []
+        },
+        "lint": {
+            "outputs": []
+        },
+        "test": {
+            "outputs": []
+        }
+    }
+}

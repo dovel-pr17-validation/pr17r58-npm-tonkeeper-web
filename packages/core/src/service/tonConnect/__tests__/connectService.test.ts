@@ -1,0 +1,260 @@
+/* eslint-disable import/no-extraneous-dependencies */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Address } from '@ton/core';
+import { TonConnectError } from '../../../entries/exception';
+import { SEND_TRANSACTION_ERROR_CODES, TonConnectNetwork } from '../../../entries/tonConnect';
+import { Network } from '../../../entries/network';
+import type { TonContract } from '../../../entries/wallet';
+import type { IStorage } from '../../../Storage';
+
+const mocks = vi.hoisted(() => ({
+    getAccounts: vi.fn(),
+    getAccountByWalletById: vi.fn()
+}));
+
+vi.mock('../../accountsStorage', () => ({
+    accountsStorage: () => ({
+        getAccounts: mocks.getAccounts
+    })
+}));
+
+vi.mock('../../../entries/account', async () => {
+    const actual = await vi.importActual<typeof import('../../../entries/account')>(
+        '../../../entries/account'
+    );
+    return {
+        ...actual,
+        getAccountByWalletById: mocks.getAccountByWalletById
+    };
+});
+
+const { sendBadRequestResponse, checkTonConnectFromAndNetwork, checkDappOriginMatchesManifest } =
+    await import('../connectService');
+
+const fakeStorage = {} as IStorage;
+
+const walletRawAddress = `0:${'ab'.repeat(32)}`;
+const otherRawAddress = `0:${'cd'.repeat(32)}`;
+const friendly = (raw: string, options: { bounceable: boolean; testOnly: boolean }) =>
+    Address.parse(raw).toString({ urlSafe: true, ...options });
+
+const makeWallet = (overrides: Partial<TonContract> = {}): TonContract =>
+    ({
+        id: 'wallet-1',
+        rawAddress: walletRawAddress,
+        ...overrides
+    } as TonContract);
+
+describe('sendBadRequestResponse', () => {
+    it('returns BAD_REQUEST_ERROR with default message when no custom message is passed', () => {
+        const response = sendBadRequestResponse('req-1', 'sendTransaction');
+
+        expect(response).toEqual({
+            id: 'req-1',
+            error: {
+                code: SEND_TRANSACTION_ERROR_CODES.BAD_REQUEST_ERROR,
+                message: 'Method "sendTransaction" is not supported by the wallet app'
+            }
+        });
+    });
+
+    it('respects a custom message', () => {
+        const response = sendBadRequestResponse(
+            'req-2',
+            'sendTransaction',
+            'Invalid account provided'
+        );
+
+        expect(response).toEqual({
+            id: 'req-2',
+            error: {
+                code: SEND_TRANSACTION_ERROR_CODES.BAD_REQUEST_ERROR,
+                message: 'Invalid account provided'
+            }
+        });
+    });
+
+    it('does not leak the method name when a custom message is used', () => {
+        const response = sendBadRequestResponse('id', 'signData', 'Unknown session');
+
+        expect(response.error.message).toBe('Unknown session');
+        expect(response.error.message).not.toContain('signData');
+    });
+});
+
+describe('checkTonConnectFromAndNetwork', () => {
+    beforeEach(() => {
+        mocks.getAccounts.mockReset();
+        mocks.getAccountByWalletById.mockReset();
+    });
+
+    it('does nothing when neither from nor network are provided', async () => {
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, makeWallet(), {})
+        ).resolves.toBeUndefined();
+
+        expect(mocks.getAccounts).not.toHaveBeenCalled();
+        expect(mocks.getAccountByWalletById).not.toHaveBeenCalled();
+    });
+
+    it('passes when "from" matches the wallet raw address (case-insensitive)', async () => {
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, makeWallet(), {
+                from: walletRawAddress.toUpperCase()
+            })
+        ).resolves.toBeUndefined();
+    });
+
+    it.each([
+        { bounceable: true, testOnly: false },
+        { bounceable: false, testOnly: false },
+        { bounceable: true, testOnly: true },
+        { bounceable: false, testOnly: true }
+    ])('passes when "from" is the wallet address in friendly format %o', async options => {
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, makeWallet(), {
+                from: friendly(walletRawAddress, options)
+            })
+        ).resolves.toBeUndefined();
+    });
+
+    it('rejects a friendly "from" that belongs to another wallet', async () => {
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, makeWallet(), {
+                from: friendly(otherRawAddress, { bounceable: true, testOnly: false })
+            })
+        ).rejects.toMatchObject({
+            message: 'Invalid account provided',
+            code: SEND_TRANSACTION_ERROR_CODES.BAD_REQUEST_ERROR
+        });
+    });
+
+    it('rejects a "from" that is not a TON address', async () => {
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, makeWallet(), { from: 'not-an-address' })
+        ).rejects.toMatchObject({
+            message: 'Invalid account provided',
+            code: SEND_TRANSACTION_ERROR_CODES.BAD_REQUEST_ERROR
+        });
+    });
+
+    it('throws TonConnectError(BAD_REQUEST) when "from" does not match the wallet', async () => {
+        const wallet = makeWallet();
+
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, wallet, { from: otherRawAddress })
+        ).rejects.toMatchObject({
+            name: 'Error',
+            message: 'Invalid account provided',
+            code: SEND_TRANSACTION_ERROR_CODES.BAD_REQUEST_ERROR
+        });
+
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, wallet, { from: otherRawAddress })
+        ).rejects.toBeInstanceOf(TonConnectError);
+    });
+
+    it('throws when mainnet is requested but the wallet lives on a testnet account', async () => {
+        const wallet = makeWallet();
+        mocks.getAccounts.mockResolvedValue([]);
+        mocks.getAccountByWalletById.mockReturnValue({ type: 'testnet' });
+
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, wallet, {
+                network: Network.MAINNET.toString() as TonConnectNetwork
+            })
+        ).rejects.toMatchObject({
+            message: 'Invalid network provided',
+            code: SEND_TRANSACTION_ERROR_CODES.BAD_REQUEST_ERROR
+        });
+    });
+
+    it('throws when testnet is requested but the wallet lives on a non-testnet account', async () => {
+        const wallet = makeWallet();
+        mocks.getAccounts.mockResolvedValue([]);
+        mocks.getAccountByWalletById.mockReturnValue({ type: 'mnemonic' });
+
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, wallet, {
+                network: Network.TESTNET.toString() as TonConnectNetwork
+            })
+        ).rejects.toMatchObject({
+            message: 'Invalid network provided',
+            code: SEND_TRANSACTION_ERROR_CODES.BAD_REQUEST_ERROR
+        });
+    });
+
+    it('passes when network matches the account (mainnet + mnemonic account)', async () => {
+        const wallet = makeWallet();
+        mocks.getAccounts.mockResolvedValue([]);
+        mocks.getAccountByWalletById.mockReturnValue({ type: 'mnemonic' });
+
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, wallet, {
+                network: Network.MAINNET.toString() as TonConnectNetwork
+            })
+        ).resolves.toBeUndefined();
+    });
+
+    it('passes when network matches the account (testnet + testnet account)', async () => {
+        const wallet = makeWallet();
+        mocks.getAccounts.mockResolvedValue([]);
+        mocks.getAccountByWalletById.mockReturnValue({ type: 'testnet' });
+
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, wallet, {
+                network: Network.TESTNET.toString() as TonConnectNetwork
+            })
+        ).resolves.toBeUndefined();
+    });
+
+    it('throws a plain Error when the account cannot be resolved', async () => {
+        const wallet = makeWallet();
+        mocks.getAccounts.mockResolvedValue([]);
+        mocks.getAccountByWalletById.mockReturnValue(undefined);
+
+        await expect(
+            checkTonConnectFromAndNetwork(fakeStorage, wallet, {
+                network: Network.MAINNET.toString() as TonConnectNetwork
+            })
+        ).rejects.toThrow('Unknown account provided');
+    });
+});
+
+describe('checkDappOriginMatchesManifest', () => {
+    it('returns true when origin matches the manifest origin', () => {
+        expect(
+            checkDappOriginMatchesManifest({
+                origin: 'https://dedust.io',
+                manifestUrl: 'https://dedust.io/tonconnect-manifest.json'
+            })
+        ).toBe(true);
+    });
+
+    it('returns false when localhost origin tries to use a non-localhost manifest', () => {
+        expect(
+            checkDappOriginMatchesManifest({
+                origin: 'http://localhost:3000',
+                manifestUrl: 'https://dedust.io'
+            })
+        ).toBe(false);
+    });
+
+    it('returns false when 127.0.0.1 origin tries to use a non-localhost manifest', () => {
+        expect(
+            checkDappOriginMatchesManifest({
+                origin: 'http://127.0.0.1:3000',
+                manifestUrl: 'https://dedust.io'
+            })
+        ).toBe(false);
+    });
+
+    it('returns false when the manifest URL is unparseable', () => {
+        expect(
+            checkDappOriginMatchesManifest({
+                origin: 'https://dedust.io',
+                manifestUrl: 'not-a-url'
+            })
+        ).toBe(false);
+    });
+});

@@ -1,0 +1,55 @@
+name: Tonkeeper Build Extension
+on:
+    workflow_call:
+    workflow_dispatch:
+env:
+    # @tonkeeper/chainkit installs from GitHub Packages; the public repo has no package access of its own.
+    NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+    # The bundle outgrew Node's default 2 GB heap.
+    NODE_OPTIONS: --max-old-space-size=6144
+jobs:
+    extension-build:
+        name: extension-build
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+            - name: Checkout to git repository
+              uses: actions/checkout@v4
+
+            - name: Set up Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22.22.2
+
+            - name: Enable Corepack
+              run: |
+                  corepack enable
+
+            - name: Run install
+              uses: borales/actions-yarn@v5
+              with:
+                  cmd: install
+
+            - name: Run build
+              uses: borales/actions-yarn@v5
+              env:
+                  WALLETCONNECT_PROJECT_ID: ${{ vars.WALLETCONNECT_PROJECT_ID }}
+              with:
+                  cmd: build:extension
+
+            - name: Upload Extension Chrome to artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Extension Chrome
+                  retention-days: 10
+                  path: |
+                      ${{ github.workspace }}/apps/extension/dist/chrome
+
+            - name: Upload Extension Firefox to artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Extension Firefox
+                  retention-days: 10
+                  path: |
+                      ${{ github.workspace }}/apps/extension/dist/firefox
